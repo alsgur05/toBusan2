@@ -1,7 +1,35 @@
-//문제점 : 좀비가 짝수턴에 못움직여야햐는데 움직이고 있음 >> 해결완
-//문제점 : p가 60~70일때 첫턴에서 마동석쪽으로 움직여서 M이 사라짐 >> ZM이 인접할떈 못움직이게 만들자 >> 해결완
-//문제점 : 마동석 스테미나가 5를 넘기는 문제가 생김, 못넘기게 만들자 
-//문제점 : 
+//문제점 : Q. 열차 길이를 15로 했을때 안의 길이(C,Z,M이 움직이는 공간)를 15로 하는건가?
+/*
+Q. 깃헙 기록하고있는 방식이 이게 맞나
+A. 깃헙 서버에 남기 때문에(Blame) readme에 기록 안해도됨.
+*/
+/*
+Q. <이동> 페이즈 진행 순서가
+상태 출력 - 시민 이동 - 좀비 이동 - 상태 출력 - 마동석 이동(입력)]인데 내가 한게 맞나?
+*/
+/*
+Q. <이동>, <행동> 코드를 분리해서 만들라는 말인가?
+*/
+/*
+Q.마동석이 한턴에 move/stay 와 rest/provoke 를 다 하는데 둘다 0을 입력하면 한턴에 어그로를 2를 감소 시킬수있는건가?
+*/
+/*
+Q. ctrl + k + c 눌렀을때 기준으로 줄을 세는건가?
+A. 20줄 엄청 막 신경 안써도됨
+*/
+/*
+해야할거:
+!!repo 새로 파서 .c로 업로드!!
+마동석 이동 잘못 적으면 다시 질문 > 해결완
+좀비 마동석 공격 >> m_ation 부분 ZM 인접했을때 (0.rest 1.provoke. 2.hold) 뜨는 문구가 다름
+>>
+마동석 붙들기
+어그로가 같거나 마동석이 높을때 좀비가 도망감;;(어그로 상관안쓰고 좀비가 시민쪽으로만 가고있음)
+M_move 20줄 안으로 만들기 > 해결완
+
+
+현재 마동석 어그로가 AGGRO_MIN을 넘는 문제가 생김
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,21 +70,27 @@ int length, p, m_stm;
 int train_lenght_exit, madongseok_exit, p_exit = 0;
 char characters[] = { 'C', 'Z', 'M' }; // 0, 1, 2
 int sum1 = 0;
+int sum2 = 0;
 int turn = 0;
 int c_aggro = 1, m_aggro = 1;
 int m_status, m_move;
-int r_move_c = rand() % 100;
 int c, z, m;
 int status;
-int x = 0;
-int m_aggro_medium;
-int atteck = 0;
+int x;
+int m_action_while;
+int m_aggro_mid;
+int z_atteck_m, z_atteck_c;
+int zombie_cannotMove = 0;
+int ZM_cannotMove;
+int ZC_cannotMove;
+int m_pull;
+int gameOver;
 
 //초기화, 초기 상태
 void train_first() {
 	do
 	{
-		printf("traing length(15 ~ 50) >> ");
+		printf("train length(15 ~ 50) >> ");
 		scanf_s("%d", &length);
 	} while (LEN_MAX < length || LEN_MIN > length);
 
@@ -77,17 +111,10 @@ void train_first() {
 	m = length - 2;
 }
 void C_turn() {
-	if (r_move_c <= 100 - p) { //시민이 움직일떄
-		/*if (c_aggro <  AGGRO_MAX) {
-			++c_aggro;
-			--c;
-			++sum1;
-		}
-		else {
-			--c;
-			++sum1;
-		}*/
+	int r_move_c = rand() % 100;
+	if (r_move_c <= 100 - p) {
 		--c;
+		++c_aggro;
 		++sum1;
 	}
 	else { //시민이 못움직일떄
@@ -101,23 +128,36 @@ void C_turn() {
 		}
 	}
 }
-void Z_turn() {
+//Z_trun 20줄 넘는데..?
+void Z_turn() { //turn을 계산한것을 바탕으로 move에서 출력하기 때문에 프린트 X
 	if (turn % 2 == 1) {
-		if (z + 1 == m || z == c + 1) { //좀비가 시민 또는 마동석과 인접할때 못움직임
-			return;
+		if (m == z + 1 && c_aggro <= m_aggro)
+		{
+			++ZM_cannotMove; //초기화 시켜줘야됨 >> 해줌
 		}
-		if (c_aggro > m_aggro) {
-			--z;
+		else if (c == z - 1 && c_aggro > m_aggro)
+		{
+			++ZC_cannotMove;
 		}
-		else if (c_aggro < m_aggro) {
-			++z;
-		}
-		else if (c_aggro == m_aggro) {
-			++z;
+		else
+		{
+			if (m_aggro < c_aggro)
+			{
+				if (z != c + 1) //시민과 인접하지 않은 경우
+				{
+					--z;
+				}
+			}
+			else
+			{
+				if (z != m - 1)
+				{
+					++z;
+				}
+			}
 		}
 	}
 }
-
 void CZ_turn() {
 	C_turn();
 	Z_turn();
@@ -145,7 +185,7 @@ void character_position() {
 	}
 }
 void train_start() {
-	printf("turn : %d\n", turn);
+
 	for (int i = 0; i < length; i++) {
 		printf("#");
 	}
@@ -153,9 +193,20 @@ void train_start() {
 	character_position();
 	printf("\n\n\n");
 }
-
-
-void madongseok_status() {
+void game_over() {
+	if (c && length == 1)
+	{
+		printf("시민 탈출");
+		exit(1);
+	}
+	else if (c == z + 1)
+	{
+		printf("GAME OVER! citizen dead...");
+		++gameOver;
+		exit(1);
+	}
+}
+void m_move_Q() {
 	if (m == z + 1) {
 		printf("madongseok move(0 : stay) >> ");
 	}
@@ -163,37 +214,26 @@ void madongseok_status() {
 		printf("madongseok move(0 : stay, 1 : left) >> ");
 	}
 }
+
+
 // 1턴 <이동> 페이즈 (시민-좀비-마동석)
-void madongseok_move() {
-	madongseok_status();
-	scanf_s("%d", &m_move);
-	if (m_move == MOVE_LEFT && m_aggro < AGGRO_MAX) { //마동석 움직이고 어그로max보다 작을경우
-		--m;
-		++m_aggro;
-		train_start();
-		printf("madongseok move %d -> %d (aggro : %d -> %d, stamina : %d)\n\n", m + 1, m, m_aggro - 1, m_aggro, m_stm);
+
+int y = 0;
+
+void m_limited_aggro() {
+	if (m_move == MOVE_LEFT) { // Move
+		if (m_aggro < AGGRO_MAX) {
+			++m_aggro;
+		}
 	}
-	else if (m_move == MOVE_LEFT && m_aggro == AGGRO_MAX) //마동석 움직이고 어그로 max일 경우
-	{
-		--m;
-		train_start();
-		printf("madongseok move %d -> %d (aggro : %d, stamina : %d)\n\n", m + 1, m, m_aggro, m_stm);
-	}
-	else if (m_move == MOVE_STAY && m_aggro == AGGRO_MIN) { //마동석 안움직이고 어그로가 0 일경우
-		train_start();
-		printf("madongseok : stay %d, (aggro : %d, stamina : %d)\n\n", m, m_aggro, m_stm);
-	}
-	else if (m_move == MOVE_STAY && m_aggro > AGGRO_MIN) { //마동석 안움직이고 어그로가 0보다 큰경우
-		--m_aggro;
-		train_start();
-		printf("madongseok : stay %d, (aggro : %d -> %d, stamina : %d)\n\n", m, m_aggro + 1, m_aggro, m_stm);
+	else if (m_move == MOVE_STAY) { // Stay
+		if (m_aggro > AGGRO_MIN) {
+			--m_aggro;
+		}
 	}
 }
-
-
 void C_move() {
 	if (sum1 == 1 && c_aggro < AGGRO_MAX) {
-		++c_aggro;
 		printf("citizen : %d -> %d (aggro : %d -> %d)\n", c + 1, c, c_aggro - 1, c_aggro);
 	}
 	else if (sum1 == 1 && c_aggro == AGGRO_MAX)
@@ -201,76 +241,216 @@ void C_move() {
 		printf("citizen : %d -> %d (aggro : %d)\n", c + 1, c, c_aggro);
 	}
 	else { //sum == 0
-		printf("citizen : stay %d\n", c);
+		printf("citizen : stay %d (aggro : %d -> %d)\n", c, c_aggro + 1, c_aggro);
 	}
 }
-void Z_move() {
-	if (turn % 2 == 1) {
-		if (c_aggro > m_aggro) { //시민 어그로가 더 크면
-			printf("zombie : %d -> %d\n", z + 1, z);
-		}
-		else if (c_aggro <= m_aggro) {//마동석 어그로가 시민과 같거나 크면
-			if (z + 1 == m) {
-				printf("zombie stay %d", z);
-			} else {
-				printf("zombie : %d -> %d\n", z - 1, z);
+void Z_move() { //프린트 부분이라 생각하면 편함
+	if (m_pull == 1)
+	{
+		printf("zombie stay %d(from madongseok pull)", z);
+	}
+	else
+	{
+		if (turn % 2 == 1)
+		{
+			if (ZM_cannotMove == 1)
+			{
+				printf("zombie stay %d(right madongseok)\n", z);
+			}
+			else if (ZC_cannotMove == 1)
+			{
+				printf("zombie stay %d(left citizen)\n", z);
+			}
+			else
+			{
+				if (c_aggro > m_aggro)
+				{
+					printf("zombie : %d -> %d\n", z, z - 1);
+				}
+				else
+				{
+					printf("zombie : %d -> %d\n", z - 1, z);
+				}
 			}
 		}
+		else
+		{
+			printf("zombie stay %d(form turn)", z);
+		}
+		printf("\n");
 	}
-	else {
-		printf("zomide : stay %d(cannot move)\n", z);
-	}
-	printf("\n");
+
 }
-void CZ_move() {
+void CZ_move() { //프린트 부분
 	train_start();
 	C_move();
 	Z_move();
 }
 
-void m_action() {
-	while (x == 0)
+void M_move() {
+	y = 0;
+	do
 	{
-		printf("madongseok action (0.rest, 1.provoke) >> ");
-		scanf_s("%d", &status);
-
-		if (status == ACTION_REST || status == ACTION_PROVOKE)
+		m_move_Q();
+		scanf_s("%d", &m_move);
+		if (m_move == MOVE_LEFT)
 		{
-			printf("\n");
-			++x; //x = 1; > while문 빠져나감
-			if (status == ACTION_REST && m_aggro == 0) { //m_aggro 1부터 시작인데? >> 이 코드 실행 안되고 있었음
-				if (m_stm == STM_MAX) { //마동석 stm이 5를 넘지 못하게 하는 부분
-					printf("madongseok rests...\nmadongseok: %d (agrro : %d, stamina : %d)\n", m, m_aggro, m_stm);
-				}
-				else {
-					++m_stm;
-					printf("madongseok rests...\nmadongseok: %d (agrro : %d, stamina : %d -> %d)\n", m, m_aggro, m_stm - 1, m_stm);
-				}
-
+			++m_move;
+			++y;
+			if (m_aggro == AGGRO_MAX) //AGGRO_MAX일때 움직이면 어그로 그대로
+			{
+				printf("madongseok move %d -> %d (aggro : %d, stamina : %d)\n", m + 1, m, m_aggro, m_stm);
 			}
-			else if (status == ACTION_REST && m_aggro > 0)
+			else if (m_aggro == AGGRO_MIN)
+			{
+				++m_aggro;
+				printf("madongseok move %d -> %d (aggro : %d, stamina : %d)\n", m + 1, m, m_aggro, m_stm);
+			}
+			else
+			{
+				++m_aggro;
+				printf("madongseok move %d -> %d (aggro : %d -> %d, stamina : %d)\n", m + 1, m, m_aggro - 1, m_aggro, m_stm);
+			}
+		}
+		else if (m_move == MOVE_STAY)
+		{
+			++y;
+			if (m_aggro == AGGRO_MAX) //AGGRO_MAX일때 움직이면 어그로 그대로
+			{
+				printf("madongseok stay %d (aggro : %d, stamina : %d)\n", m, m_aggro, m_stm);
+			}
+			else if (m_aggro == AGGRO_MIN)
+			{
+				printf("madongseok stay %d (aggro : %d, stamina : %d)\n", m, m_aggro, m_stm);
+			}
+			/*else if (m_aggro == 1)
 			{
 				--m_aggro;
-				if (m_stm < STM_MAX) {
-					++m_stm;
-					printf("madongseok rests...\nmadongseok: %d (agrro : %d -> %d, stamina : %d -> %d)\n", m, m_aggro + 1, m_aggro, m_stm - 1, m_stm);
+				printf("madongseok stay %d (aggro : %d -> %d, stamina : %d)\n", m, m_aggro + 1, m_aggro, m_stm);
+			}*/
+			else
+			{
+				--m_aggro;
+				printf("madongseok stay %d (aggro : %d -> %d, stamina : %d)\n", m, m_aggro + 1, m_aggro, m_stm);
+			}
+		}
+	} while (y == 0 && m_move != MOVE_STAY);
+}
+
+void M_moveAndTrain() {
+	M_move();
+	train_start();
+}
+
+void m_action_Q() {
+	do
+	{
+		if (m == z + 1) //mz 인접할경우
+		{
+			++m_action_while;
+			printf("madongseok action (0.rest, 1.provoke, 2. pull)");
+			scanf_s("%d", &status);
+		}
+		else //mz 인접안할경우
+		{
+			++m_action_while;
+			printf("madongseok action (0.rest, 1.provoke)");
+			scanf_s("%d", &status);
+		}
+	} while (m_action_while == 0);
+}
+
+void m_action() { //m_aggro 만들어서 어그로는 따로  >>  현재 M_move에서 다루고있음
+	m_action_Q();
+	if (m == z + 1) // 인접할 경우(m_stm 무조건 깎임), status가 0,1,2인 경우 밖에 없음
+	{
+		if (status == ACTION_REST || status == ACTION_PROVOKE || status == ACTION_PULL)
+		{
+			printf("\n");
+			if (status == ACTION_REST) //status == 0
+			{
+				if (m_stm <= STM_MAX && m_stm > STM_MIN) //m_stm == 5
+				{
+					if (m_aggro == AGGRO_MAX) //m_aggro = 5
+					{
+						--m_aggro;
+						printf("madongseok rests...\nmadongseok : %d (aggro : %d -> %d, stamina %d -> %d)\n", m, m_aggro + 1, m_aggro, m_stm + 1, m_stm);
+					}
+					else if (m_aggro == AGGRO_MIN) //m_aggro == 0
+					{
+						printf("madongseok rests...\nmadongseok : %d (aggro : %d, stamina : %d -> %d)\n", m, m_aggro, m_stm + 1, m_stm);
+					}
+					else // AGGRO_MIN < m_aggro < AGGRO_MAX
+					{
+						--m_aggro;
+						printf("madongseok rests...\nmadongseok : %d (aggro : %d -> %d, stamina : %d -> %d)\n", m, m_aggro - 1, m_aggro, m_stm + 1, m_stm);
+					}
 				}
 				else
 				{
-					printf("madongseok rests...\nmadongseok: %d (aggro : %d -> %d, stamina : %d", m, m_aggro + 1, m_aggro, m_stm);
+					printf("madongseok dead by zombie...");
 				}
 			}
-			else if (status == ACTION_PROVOKE) {
-				m_aggro_medium = m_aggro;
-				m_aggro = AGGRO_MAX;
-				printf("madongseok provoked zombie...\nmadongseok: %d (agrro : %d -> %d, stamina : %d)\n", m, m_aggro_medium, AGGRO_MAX, m_stm);
+			else if (status == ACTION_PROVOKE)
+			{
+				if (m_aggro == AGGRO_MAX)
+				{
+					printf("madongseok provoked zombie...\nmadongseok : %d (aggro %d, stamina : %d -> %d)\n", m, m_aggro, m_stm + 1, m_stm);
+				}
+				else
+				{
+					m_aggro_mid = m_aggro;
+					m_aggro = AGGRO_MAX;
+					printf("madongseok provoked zombie...\nmadongseok : %d (aggro %d -> %d, stamina : %d -> %d)\n", m, m_aggro_mid, m_aggro, m_stm + 1, m_stm);
+				}
+			}
+			else //status == ACTION_PULL
+			{
+				--m_stm;
+				m_aggro + 2;
+				int r_pull_m = rand() % 100;
+				if (r_pull_m <= 100 - p)
+				{
+					++m_pull;
+					printf("madongseok pulled zombie... Next turn, it's can't move\nmadongseok : %d (aggro : %d -> %d, stamina : %d -> %d)\n\n\n", m, m_aggro - 2, m_aggro, m_stm + 1, m_stm);
+				}
+				else
+				{
+					printf("madongseok failed to pull zombie\nmadongseok : %d (aggro : %d -> %d, stamina: %d -> %d)\n\n\n", m, m_aggro - 2, m_aggro, m_stm + 1, m_stm);
+				}
 			}
 		}
-		else {
-			x = 0;
+	}
+	else //인접하지 않을경우
+	{
+		if (status == ACTION_REST)
+		{
+			if (m_aggro == AGGRO_MAX) //m_aggro = 5
+			{
+				--m_aggro;
+				printf("madongseok rests...\nmadongseok : %d (aggro : %d -> %d, stamina %d -> %d)\n", m, m_aggro + 1, m_aggro, m_stm - 1, m_stm);
+			}
+			else if (m_aggro == AGGRO_MIN) //m_aggro == 0
+			{
+				printf("madongseok rests...\nmadongseok : %d (aggro : %d, stamina : %d -> %d)\n", m, m_aggro, m_stm - 1, m_stm);
+			}
+			else // AGGRO_MIN < m_aggro < AGGRO_MAX
+			{
+				--m_aggro;
+				printf("madongseok rests...\nmadongseok : %d (aggro : %d -> %d, stamina : %d -> %d)\n", m, m_aggro - 1, m_aggro, m_stm - 1, m_stm);
+			}
+		}
+		else if (status == ACTION_PROVOKE)
+		{
+
+		}
+		else //status == ACTION_PULL
+		{
+
 		}
 	}
 }
+
 void CZM_status() {
 	if (sum1) {
 		printf("citizen move.\n");
@@ -284,11 +464,36 @@ void CZM_status() {
 	else if (m == z + 1) {
 		printf("zombie attcked madongseok");
 	}
+	else if (c == z - 1 && m == z + 1)
+	{
+		printf("zombie atteck madongseok (aggro : %d vs %d, madongseok stamina : %d -> %d)\n", c_aggro, m_aggro, m_stm + 1, m_stm);
+	}
 	else {
 		printf("zombie attcked nobody");
 	}
 	printf("\n");
 	m_action();
+}
+
+
+
+void Z_atteck() {
+	if (z == m + 1)
+	{
+		++z_atteck_m;
+		if (z_atteck_m == 1)
+		{
+			--m_stm;
+		}
+	}
+	else if (z == c - 1)
+	{
+		++z_atteck_c;
+		if (z_atteck_c == 1)
+		{
+			game_over();
+		}
+	}
 }
 
 
@@ -299,14 +504,23 @@ int main() {
 	train_first(); //열차 길이, 마동석 stm, 확률 설정
 	train_start();
 	// 1턴 <이동> 페이즈 (시민-좀비-마동석)
-	while (1)
+	while (gameOver == 0)
 	{
+		x = 0;
 		sum1 = 0;
 		++turn;
-		CZ_turn();
-		CZ_move();
-		madongseok_move();
-		CZM_status();
+		ZM_cannotMove = 0;
+		ZC_cannotMove = 0;
+		m_action_while = 0;
+		m_pull = 0;
+		gameOver = 0;
+		printf("turn : %d\n", turn); //테스트
+		CZ_turn(); //C_turn > Z_turn
+		CZ_move(); //train_start > C_move > Z_move
+		Z_atteck();
+		game_over();
+		M_moveAndTrain();
+		CZM_status(); //m_action
 	}
 	return 0;
 }
